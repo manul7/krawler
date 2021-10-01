@@ -131,13 +131,10 @@ class Crawler:
 
 
 @click.command()
-@click.option(
-    "-n", "--dry-run", is_flag=True, help="Run and print results on the screen."
-)
 @click.version_option(version=__version__)
 @click.argument("URL", metavar="<URL>")
 @click.argument("DST", metavar="<DST>", type=pathlib.Path)
-def cli(dry_run, url, dst):
+def cli(url, dst):
     """Krawler: Yet Another Web Crawler
 
     It takes URL string, processes it, and stores allowed content into DST directory.
