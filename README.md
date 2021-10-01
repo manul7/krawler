@@ -1,4 +1,4 @@
-# The test task
+# Task description
 - implement recursive web-crawler of the site.
 - crawler is a command-line tool that accept starting URL and destination directory
 - crawler download the initial URL and look to links inside the original document (recursively)

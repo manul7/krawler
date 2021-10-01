@@ -32,7 +32,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'krawl = app.crawl:cli'
+            'krawl = app.crawler:cli'
         ]
     },
 )
