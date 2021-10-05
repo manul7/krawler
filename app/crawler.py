@@ -1,77 +1,99 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from os import path
 from typing import List
-import click
 import logging
 import pathlib
 import ssl
+import shutil
 
-from urllib.request import Request, urlopen, urljoin, URLError
+from urllib.request import Request, urlopen, URLError
 from urllib.parse import urlparse
 
+import click
 from bs4 import BeautifulSoup
 
-# from diskcache import Deque, Index
-
+from diskcache import Deque, Index
 from .__init__ import __version__
-from .checks import is_url_valid, is_dir_empty
+from .checks import is_dir_exists, is_url_valid, is_dir_empty
+from .config import TMP_DIR
 
 logger = logging.getLogger(__name__)
 
 
 class Crawler:
-    def __init__(self, base_url: str, dst: pathlib.Path):
-
-        if not is_url_valid(base_url):
-            raise ValueError("Invalid URL.")
-        # TODO: Check for ability to write in DST
-
-        self.base_url = base_url
+    def __init__(self, dst: pathlib.Path):
+        self.base_url = None
         self.base_dst = dst
+        self.setup_ssl_context()
+        self.tasks = []
 
-        self.create_base_dir()
-        self.crawledLinks = set()
-        # Setup SSL context to ignore invalid certs
+    @staticmethod
+    def rm_tail(url: str) -> str:
+        """Remove trailing slash from URL"""
+        if url.endswith("/"):
+            return url[:-1]
+        else:
+            return url
+
+    def setup_ssl_context(self):
+        """Setup SSL context to ignore invalid certs"""
         self.ssl_ctx = ssl.create_default_context()
         self.ssl_ctx.check_hostname = False
         self.ssl_ctx.verify_mode = ssl.CERT_NONE
-        self.tasks = []
 
     def create_base_dir(self):
         """Create output directory"""
         site_dir = urlparse(self.base_url).netloc
         save_path = pathlib.Path.joinpath(self.base_dst, site_dir)
         save_path.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Output directory {save_path} created")
+        logger.info("Output directory created: %s", save_path)
 
-    def crawl(self, url: str):
-        """Crawl provided link
-        :param url: target URL
+    def fetch(self, url: str):
+        """Get page contents
+        :parm url: target URL
+        :return page contents
         """
+        logger.debug("Fetching: %s", url)
         try:
-            link = urljoin(self.base_url, url)
-            is_crawled = link not in self.crawledLinks
-            is_belong_base = urlparse(link).netloc == urlparse(self.base_url).netloc
-
-            if is_belong_base and is_crawled:
-                request = Request(link, headers={"User-Agent": "Mozilla/5.0"})
-                response = urlopen(request, context=self.ssl_ctx)
-                self.crawledLinks.add(link)
-                page = response.read()
-                self.save_content(urlparse(link).netloc, page)
-                # Extract links
-                links = self.extract_links(page)
-                # Expand links
-                links = [self.base_url + "/" + x for x in links]
-                # Update task list
-                self.enqLinks(links)
-
+            request = Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            response = urlopen(request, context=self.ssl_ctx)
+            return response.read()
         except URLError as e:
-            logger.error(
-                f"URL {link} threw this error when trying to parse: {e.reason}"
-            )
-            return url, response.getcode()
+            logger.error("Error '%s', while parsing %s", e.reason, url)
+
+    def crawl(self, url):
+        """Main crawling function"""
+        url = self.rm_tail(url)
+        self.base_url = url
+
+        if not is_url_valid(self.base_url):
+            raise ValueError("Invalid URL.")
+
+        self.create_base_dir()
+
+        urls = Deque([url], pathlib.Path.joinpath(TMP_DIR, "urls"))
+        results = Index(str(pathlib.Path.joinpath(TMP_DIR, "results")))
+
+        while True:
+            try:
+                url = urls.popleft()
+            except IndexError:
+                break
+
+            if url in results:
+                continue
+
+            data = self.fetch(url)
+            if data is None:
+                continue
+
+            self.save_content(url, data)
+            links = self.extract_links(data)
+            # Expand
+            links = [self.base_url + x for x in links]
+            logger.debug("%s", links)
+            urls += links
+            results[url] = data
 
     def extract_links(self, content: str) -> List:
         """Extract and filter links
@@ -84,24 +106,31 @@ class Crawler:
         hrefs = soup.find_all("a")
         # TODO: Move to separate func, if more flexibility required
         for link in hrefs:
-            url = link.get('href')
+            url = link.get("href")
+
+            if url is None:
+                continue
+
             # TODO: handle relative URLs
-            logger.debug(f"HREF: {url}")
+            logger.debug("HREF: %s", url)
+            url = self.normalize_url(url)
+
             if is_url_valid(url):
                 if urlparse(url).netloc == urlparse(self.base_url).netloc:
                     res.append(url)
             else:
                 # TODO: handle relative URLs
                 res.append(url)
-        logger.debug(res)
+        logger.debug("Results list: %s", res)
         return res
 
-    def enqLinks(self, links: List):
-        for link in links:
-            if urljoin(self.base_url, link) not in self.crawledLinks:
-                if urljoin(self.base_url, link) not in self.tasks:
-                    self.tasks.append(link)
-        logger.debug(f"Links to crawl: {self.tasks}")
+    @staticmethod
+    def normalize_url(url: str) -> str:
+        """Basic normalisation func
+        :param url: URL string
+        :returns URL string without special characters
+        """
+        return url.replace("\n", "").replace("\t", "")
 
     def save_content(self, url: str, content: str):
         """Save page content in local storage
@@ -112,19 +141,25 @@ class Crawler:
         Determine is URL ends with file name or not. If ends with filename - use it otherwise - generate it
         File name can be generated with condition - if target directory is empty - use "index.html" otherwise - page-<index>.html
         """
-
         idx = 0
-        logger.debug(f"File path: {url}")
-        # DST_NAME / DIR_NAME / FILE_NAME
-        save_path = self.base_dst.joinpath(url)
-        logger.debug(f"Save path: {save_path}")
 
+        # DST_NAME / DIR_NAME / FILE_NAME
+        netloc = str(urlparse(url).netloc)
+        url_path = str(urlparse(url).path)
+        logger.debug("Base URL: %s", netloc)
+        logger.debug("URL path: %s", url_path)
+        # Note: Skip /
+        save_path = self.base_dst.joinpath(netloc, url_path[1:])
+        logger.debug("Save path: %s", save_path)
+
+        save_path.mkdir(exist_ok=True, parents=True)
         if is_dir_empty(save_path):
             filename = "index.html"
         else:
             filename = f"file-{idx}.html"
+
         file_path = save_path.joinpath(filename)
-        logger.debug(f"File path: {file_path}")
+        logger.debug("File path: %s", file_path)
         # Save content
         with open(file_path, "w") as html:
             html.write(str(content))
@@ -134,19 +169,36 @@ class Crawler:
 @click.version_option(version=__version__)
 @click.argument("URL", metavar="<URL>")
 @click.argument("DST", metavar="<DST>", type=pathlib.Path)
+# @click.option('--ignore-previous', is_flag=True, help='Ignore previous run and remove cache')
 def cli(url, dst):
     """Krawler: Yet Another Web Crawler
 
     It takes URL string, processes it, and stores allowed content into DST directory.
     """
     logging.basicConfig(
-        level=logging.DEBUG,
         format="%(asctime)s | %(levelname)-8s | %(name)-15s | %(message)s",
         datefmt="%m/%d/%Y %I:%M:%S %p",
+        encoding="utf-8",
+        level=logging.INFO,
     )
+    if is_dir_exists(TMP_DIR):
+        print(
+            f"\
+Previous run was found in {TMP_DIR} \
+Remove previous results and restart (r) or continue (c)?"
+        )
+        ans = str(input())
+        if ans == "r":
+            shutil.rmtree(TMP_DIR)
+        elif ans == "c":
+            logger.warn("Continue")
+        else:
+            exit("Please choose r or c")
+
     try:
-        crwl = Crawler(url, dst)
-        res = crwl.crawl(url)
+        crwl = Crawler(dst)
+        crwl.crawl(url)
+
     except Exception as e:
         logger.exception(e)
         exit(1)
