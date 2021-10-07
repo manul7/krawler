@@ -189,7 +189,11 @@ Remove previous results and restart (r) or continue (c)?"
         )
         ans = str(input())
         if ans == "r":
-            shutil.rmtree(TMP_DIR)
+            cache = Index(str(pathlib.Path.joinpath(TMP_DIR, "results")))
+            cache.clear()
+            logger.warn('Cache was cleared')
+            shutil.rmtree(dst)
+            logger.warn('Destination directory was cleared')
         elif ans == "c":
             logger.warn("Continue")
         else:
