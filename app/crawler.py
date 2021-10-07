@@ -147,7 +147,7 @@ def cli(url, dst, workers):
         format="%(asctime)s | %(levelname)-8s | %(name)-15s | %(message)s",
         datefmt="%m/%d/%Y %I:%M:%S %p",
         encoding="utf-8",
-        level=logging.INFO,
+        level=logging.DEBUG,
     )
     if is_dir_exists(TMP_DIR):
         print(
