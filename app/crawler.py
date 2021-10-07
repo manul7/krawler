@@ -49,7 +49,7 @@ class Crawler:
         """Main crawling function"""
         url = expand_url(None, normalize_url(url))
         self.base_url = url
-        logger.debug('Base URL: %s', self.base_url)
+        logger.debug("Base URL: %s", self.base_url)
 
         if not is_url_valid(self.base_url):
             raise ValueError("Invalid URL.")
@@ -108,7 +108,6 @@ class Crawler:
                 res.append(url)
         logger.debug("Results list: %s", res)
         return res
-
 
     def save_content(self, url: str, content: str):
         """Save page content in local storage
@@ -169,13 +168,13 @@ Remove previous results and restart (r) or continue (c)?"
         if ans == "r":
             cache = Index(str(pathlib.Path.joinpath(TMP_DIR, "results")))
             cache.clear()
-            logger.warn('Cache was cleared')
+            logger.warn("Cache was cleared")
             try:
                 shutil.rmtree(dst)
-                logger.warn('Destination directory was cleared')
+                logger.warn("Destination directory was cleared")
             except FileNotFoundError:
                 # Ignore if destination dir does not exist
-                pass  
+                pass
         elif ans == "c":
             logger.warn("Continue")
         else:
