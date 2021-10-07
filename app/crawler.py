@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup
 from diskcache import Deque, Index
 from .__init__ import __version__
 from .checks import is_dir_exists, is_url_valid, is_dir_empty
+from .utils import expand_url, normalize_url
 from .config import TMP_DIR
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ class Crawler:
 
     def crawl(self, url):
         """Main crawling function"""
-        url = self.rm_tail(url)
+        url = expand_url(None, normalize_url(url))
         self.base_url = url
 
         if not is_url_valid(self.base_url):
@@ -90,8 +91,8 @@ class Crawler:
             self.save_content(url, data)
             links = self.extract_links(data)
             # Expand
-            links = [self.base_url + x for x in links]
             logger.debug("%s", links)
+            links = [expand_url(self.base_url, x) for x in links]
             urls += links
             results[url] = data
 
@@ -113,10 +114,10 @@ class Crawler:
 
             # TODO: handle relative URLs
             logger.debug("HREF: %s", url)
-            url = self.normalize_url(url)
+            url = normalize_url(url)
 
             if is_url_valid(url):
-                if urlparse(url).netloc == urlparse(self.base_url).netloc:
+                if url.startswith(self.base_url):
                     res.append(url)
             else:
                 # TODO: handle relative URLs
@@ -124,13 +125,6 @@ class Crawler:
         logger.debug("Results list: %s", res)
         return res
 
-    @staticmethod
-    def normalize_url(url: str) -> str:
-        """Basic normalisation func
-        :param url: URL string
-        :returns URL string without special characters
-        """
-        return url.replace("\n", "").replace("\t", "")
 
     def save_content(self, url: str, content: str):
         """Save page content in local storage
