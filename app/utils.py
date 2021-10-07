@@ -1,7 +1,16 @@
 import logging
+import pathlib
 from urllib.parse import urlparse, urljoin
 
 logger = logging.getLogger(__name__)
+
+
+def create_base_dir(base_url, base_dst):
+    """Create output directory"""
+    site_dir = urlparse(base_url).netloc
+    save_path = pathlib.Path.joinpath(base_dst, site_dir)
+    save_path.mkdir(parents=True, exist_ok=True)
+    logger.info("Output directory created: %s", save_path)
 
 def normalize_url(url: str) -> str:
     """Basic normalisation func

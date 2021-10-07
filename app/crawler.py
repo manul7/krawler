@@ -15,39 +15,22 @@ from bs4 import BeautifulSoup
 from diskcache import Deque, Index
 from .__init__ import __version__
 from .checks import is_dir_exists, is_url_valid, is_dir_empty
-from .utils import expand_url, normalize_url
+from .utils import expand_url, normalize_url, create_base_dir
 from .config import TMP_DIR
 
 logger = logging.getLogger(__name__)
 
 
 class Crawler:
+    # Setup SSL context to ignore invalid certs
+    ssl_ctx = ssl.create_default_context()
+    ssl_ctx.check_hostname = False
+    ssl_ctx.verify_mode = ssl.CERT_NONE
+
     def __init__(self, dst: pathlib.Path):
         self.base_url = None
         self.base_dst = dst
-        self.setup_ssl_context()
         self.tasks = []
-
-    @staticmethod
-    def rm_tail(url: str) -> str:
-        """Remove trailing slash from URL"""
-        if url.endswith("/"):
-            return url[:-1]
-        else:
-            return url
-
-    def setup_ssl_context(self):
-        """Setup SSL context to ignore invalid certs"""
-        self.ssl_ctx = ssl.create_default_context()
-        self.ssl_ctx.check_hostname = False
-        self.ssl_ctx.verify_mode = ssl.CERT_NONE
-
-    def create_base_dir(self):
-        """Create output directory"""
-        site_dir = urlparse(self.base_url).netloc
-        save_path = pathlib.Path.joinpath(self.base_dst, site_dir)
-        save_path.mkdir(parents=True, exist_ok=True)
-        logger.info("Output directory created: %s", save_path)
 
     def fetch(self, url: str):
         """Get page contents
@@ -71,7 +54,7 @@ class Crawler:
         if not is_url_valid(self.base_url):
             raise ValueError("Invalid URL.")
 
-        self.create_base_dir()
+        create_base_dir()
 
         urls = Deque([url], pathlib.Path.joinpath(TMP_DIR, "urls"))
         results = Index(str(pathlib.Path.joinpath(TMP_DIR, "results")))
