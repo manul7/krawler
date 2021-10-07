@@ -5,6 +5,7 @@ import logging
 import pathlib
 import ssl
 import shutil
+from multiprocessing import Process
 
 from urllib.request import Request, urlopen, URLError
 from urllib.parse import urlparse
@@ -135,7 +136,9 @@ class Crawler:
 @click.argument("URL", metavar="<URL>")
 @click.argument("DST", metavar="<DST>", type=pathlib.Path)
 # @click.option('--ignore-previous', is_flag=True, help='Ignore previous run and remove cache')
-def cli(url, dst):
+@click.option('--workers', default=4, help='Specify number of parallel workers')
+
+def cli(url, dst, workers):
     """Krawler: Yet Another Web Crawler
 
     It takes URL string, processes it, and stores allowed content into DST directory.
@@ -172,7 +175,13 @@ Remove previous results and restart (r) or continue (c)?"
 
     try:
         crwl = Crawler(dst)
-        crwl.crawl(url)
+        logger.debug("Number of workers: %d", workers)
+        processes = [Process(target=crwl.crawl, args=(url, )) for _ in range(workers)]
+
+        for process in processes:
+            process.start()
+        for process in processes:
+            process.join()
 
     except Exception as e:
         logger.exception(e)
