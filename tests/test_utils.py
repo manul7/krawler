@@ -1,4 +1,6 @@
+from os import path
 import pytest
+import pathlib
 from app.utils import *
 
 
@@ -14,3 +16,12 @@ from app.utils import *
 )
 def test_expand_url(base, url, exp):
     assert exp == expand_url(base, url)
+
+
+@pytest.mark.parametrize(
+    "dst, base_url, url, exp",
+    [("out", "sample", "sample", "out/sample")],
+)
+def test_build_save_dir(dst, base_url, url, exp):
+    dst = pathlib.Path(dst)
+    assert exp == str(build_save_path(dst, base_url, url))

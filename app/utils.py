@@ -39,3 +39,28 @@ def expand_url(base_url, url: str) -> str:
 
     logger.debug("Expanded URL: %s", url)
     return url
+
+
+def build_save_path(dst: pathlib.Path, base_url: str, url: str) -> pathlib.Path:
+    """Build path to output dir
+    :param dst: base destination directory
+    :param base_url: Base URL
+    :param url: Current URL
+    :returns path to output dir
+    """
+    netloc = str(urlparse(url).netloc)
+    url_path = str(urlparse(url).path)
+    if url_path.startswith("/"):
+        url_path = url_path[1:]
+
+    save_path = dst.joinpath(netloc, url_path)
+    logger.debug("Save path: %s", save_path)
+    return save_path
+
+
+def create_output_dir(dst, base_url, url) -> pathlib.Path:
+    """Create output dir"""
+    save_path = build_save_path(dst, base_url, url)
+    logger.debug("Save path: %s", save_path)
+    save_path.mkdir(exist_ok=True, parents=True)
+    return save_path
