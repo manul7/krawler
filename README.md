@@ -13,3 +13,6 @@
 # Note
 In general, it's very similar to "wget --mirror" (with few extra options).
 Does not necessary to implement all listed above, just do some (more important from your point of view) part, but take to account to do it in the way where every listed above is possible to add by extending your program (without re-writing from scratch)".
+
+# Testing
+As test target https://crawler-test.com/ can be used.
