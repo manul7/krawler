@@ -166,8 +166,10 @@ Remove previous results and restart (r) or continue (c)?"
         )
         ans = str(input())
         if ans == "r":
-            cache = Index(str(pathlib.Path.joinpath(TMP_DIR, "results")))
-            cache.clear()
+            targets = Index(str(pathlib.Path.joinpath(TMP_DIR, "urls")))
+            targets.clear()
+            results = Index(str(pathlib.Path.joinpath(TMP_DIR, "results")))
+            results.clear()
             logger.warn("Cache was cleared")
             try:
                 shutil.rmtree(dst)
