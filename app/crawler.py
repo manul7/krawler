@@ -54,7 +54,7 @@ class Crawler:
         if not is_url_valid(self.base_url):
             raise ValueError("Invalid URL.")
 
-        create_base_dir()
+        create_base_dir(self.base_url, self.base_dst)
 
         urls = Deque([url], pathlib.Path.joinpath(TMP_DIR, "urls"))
         results = Index(str(pathlib.Path.joinpath(TMP_DIR, "results")))
