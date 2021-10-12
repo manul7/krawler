@@ -37,5 +37,5 @@ Does not necessary to implement all listed above, just do some (more important f
 1. Run app, as test target https://crawler-test.com/ can be used:
 
     ```
-    krawler https://crawler-test.com outdir
+    krawl https://crawler-test.com outdir
     ```
