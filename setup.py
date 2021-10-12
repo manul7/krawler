@@ -1,6 +1,11 @@
 from setuptools import setup
 from app import __author__, __version__
 
+try:
+    from pip._internal.req import parse_requirements
+except ImportError:
+    from pip.req import parse_requirements
+
 setup(
     name="HttpCrawler",
     version=__version__,
@@ -23,6 +28,6 @@ setup(
     ],
     packages=["app"],
     include_package_data=True,
-    install_requires=["pytz", "six", "requests", "beautifulsoup4", "click"],
+    install_reqs = parse_requirements('requirements.txt', session='hack'),
     entry_points={"console_scripts": ["krawl = app.crawler:cli"]},
 )

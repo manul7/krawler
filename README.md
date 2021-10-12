@@ -14,5 +14,28 @@
 In general, it's very similar to "wget --mirror" (with few extra options).
 Does not necessary to implement all listed above, just do some (more important from your point of view) part, but take to account to do it in the way where every listed above is possible to add by extending your program (without re-writing from scratch)".
 
-# Testing
-As test target https://crawler-test.com/ can be used.
+
+---
+# How to run
+1. Install Python 3
+2. Open source code directory in terminal.
+3. Create virtual env with: 
+
+    ```
+    python3 -m venv virtualenv
+    ```
+1. Activate VirtualEnv with: 
+ 
+    ```
+    source ./virtualenv/bin/activate
+    ```
+1. Install app in _editable_ mode:
+
+    ```
+    pip install -e .
+    ```
+1. Run app, as test target https://crawler-test.com/ can be used:
+
+    ```
+    krawler https://crawler-test.com outdir
+    ```
